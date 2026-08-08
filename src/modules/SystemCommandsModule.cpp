@@ -86,6 +86,32 @@ int SystemCommandsModule::handleInputEvent(const InputEvent *event)
     }
 
     switch (event->inputEvent) {
+    // TrailMesh7: single press asks the paired phone to start a hands-free
+    // message. Local only — `sendToPhone` enqueues straight to the BLE client
+    // and never reaches the radio, so this costs no airtime, needs no GPS fix,
+    // and is unaffected by the device role.
+    //
+    // Single press is used because it is genuinely free on a screenless tag:
+    // `CannedMessageModule` is the only consumer of USER_PRESS and it disables
+    // itself, without registering an input observer, when no canned messages
+    // are configured and no keyboard is attached.
+    //
+    // Deliberately not the double press. That is the ad-hoc position ping, and
+    // inferring intent from a position packet — which is what stock firmware
+    // would force the app to do — cannot be told apart from a scheduled
+    // broadcast without also depending on a GPS fix and a non-TRACKER role.
+    case INPUT_BROKER_USER_PRESS: {
+        meshtastic_MeshPacket *p = router->allocForSending();
+        p->to = nodeDB->getNodeNum(); // addressed at ourselves; never transmitted
+        p->decoded.portnum = meshtastic_PortNum_PRIVATE_APP;
+        p->decoded.payload.size = 3;
+        p->decoded.payload.bytes[0] = 0x00; // app extended-frame prefix
+        p->decoded.payload.bytes[1] = 0x02; // extended type: tag trigger
+        p->decoded.payload.bytes[2] = 0x01; // gesture: single press
+        service->sendToPhone(p);
+        LOG_INFO("TrailMesh7: sent tag-trigger to phone");
+        return true;
+    }
         // GPS
     case INPUT_BROKER_GPS_TOGGLE:
 #if !MESHTASTIC_EXCLUDE_GPS
