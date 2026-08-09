@@ -108,8 +108,8 @@ int SystemCommandsModule::handleInputEvent(const InputEvent *event)
         p->decoded.payload.bytes[0] = 0x00; // app extended-frame prefix
         p->decoded.payload.bytes[1] = 0x02; // extended type: tag trigger
         p->decoded.payload.bytes[2] = 0x01; // gesture: single press
+        LOG_INFO("TrailMesh7: queueing tag-trigger for the phone");
         service->sendToPhone(p);
-        LOG_INFO("TrailMesh7: sent tag-trigger to phone");
         return true;
     }
         // GPS
