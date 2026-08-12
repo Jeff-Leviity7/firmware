@@ -27,7 +27,10 @@ def readProps(prefsLoc):
         isDirty = (
             subprocess.check_output(["git", "diff", "HEAD"]).decode("utf-8").strip()
         )
-        suffix = sha
+        # TrailMesh fork marker — see the note in version.properties. Absent on
+        # upstream, where version.properties has no `fork` key, so this file
+        # stays a no-op diff against develop rather than a behaviour change.
+        suffix = version.get("fork", "") + sha
         # if isDirty:
         #     # short for 'dirty', we want to keep our verstrings source for protobuf reasons
         #     suffix = sha + "-d"
