@@ -553,6 +553,28 @@ void enterDfuMode()
 #ifdef NRF_USE_SERIAL_DFU
     enterSerialDfu();
 #else
-    enterUf2Dfu();
+    // TrailMesh: enter the bootloader mode that matches how the client reached
+    // us.
+    //
+    // The Adafruit bootloader's modes are mutually exclusive — the reset magic
+    // chosen here decides which one it comes up in, and there is no way back
+    // without another reset. Upstream always picks UF2, which is correct when a
+    // cable is the only way in and a dead end for a phone on Bluetooth: the tag
+    // reboots into a USB mass-storage drive that phone cannot reach, and the
+    // user is left with a tag in DFU mode and no way to finish.
+    //
+    // A connected BLE client is therefore the signal. It is not a guess about
+    // intent — it is the transport the request itself arrived on, and the only
+    // one that can complete the update.
+    //
+    // The null check matters: nrf52Bluetooth is only constructed when Bluetooth
+    // is enabled, so a serial-only tag would dereference nothing here.
+    if (nrf52Bluetooth && nrf52Bluetooth->isConnected()) {
+        LOG_INFO("BLE client connected, entering OTA DFU");
+        enterOTADfu();
+    } else {
+        LOG_INFO("No BLE client, entering UF2 DFU");
+        enterUf2Dfu();
+    }
 #endif
 }
