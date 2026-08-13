@@ -616,6 +616,37 @@ size_t PhoneAPI::getFromRadio(uint8_t *buf)
             auto info = TypeConversions::ConvertToNodeInfo(us);
             info.has_hops_away = false;
             info.is_favorite = true;
+            // TRAILMESH: tell the phone our own hardware address.
+            //
+            // ConvertToUser zero-fills macaddr because the 2.8 slim NodeDB
+            // header no longer stores it (TypeConversions.cpp:150). That is
+            // correct for every OTHER node — the header genuinely lost the
+            // field — but ours is right here in `owner`, populated from
+            // hardware at NodeDB.cpp:437.
+            //
+            // The phone needs it to derive the tag's imprint (R6 + the low
+            // three MAC bytes), which is the only identifier that survives a
+            // renumber. Without this the imprint is underivable over USB and on
+            // iOS, and a tag's escrowed key and cloud backup have nothing
+            // stable to file themselves under.
+            //
+            // Not a new disclosure: NodeInfoModule.cpp:175 copies `owner`
+            // wholesale into every NodeInfo it BROADCASTS, so this address
+            // already goes out over the air. This only stops the locally
+            // attached phone being the one client that cannot see it.
+            //
+            // Guarded on the node number rather than trusting the state name.
+            // `us` is meshNodes[0] and NodeDB swaps our own entry there
+            // (NodeDB.cpp:2181), but that is an upstream invariant a rebase
+            // could change silently — and if it ever did, an unguarded copy
+            // would stamp OUR address onto somebody else's NodeInfo and teach
+            // the phone that two tags are one. Failing closed here costs a
+            // comparison and degrades to the app's other identification routes.
+            if (us->num == nodeDB->getNodeNum()) {
+                memcpy(info.user.macaddr, owner.macaddr, sizeof(info.user.macaddr));
+            } else {
+                LOG_WARN("TRAILMESH: own-nodeinfo slot holds 0x%08x, not us; skipping macaddr", us->num);
+            }
             {
                 concurrency::LockGuard guard(&nodeInfoMutex);
                 nodeInfoForPhone = info;
