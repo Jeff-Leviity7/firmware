@@ -4274,6 +4274,26 @@ bool NodeDB::generateCryptoKeyPair(const uint8_t *privateKey)
         LOG_DEBUG("Regenerate PKI public key from existing private key");
         if (crypto->regeneratePublicKey(config.security.public_key.bytes, config.security.private_key.bytes)) {
             keygenSuccess = true;
+        } else {
+            // TRAILMESH: say so. This failure used to be completely silent.
+            //
+            // The LOG_DEBUG above prints before the result is known, so the log
+            // claimed the key had been regenerated when it had not. With
+            // keygenSuccess false, owner.public_key is never refreshed and
+            // createNewIdentity() never runs — so the node keeps a public key
+            // from a previous pair, keeps a node number derived from it, and
+            // signs with the current private key. Every peer then rejects its
+            // broadcasts (Router.cpp, "Packet rejected by signature policy")
+            // while unicast keeps working, so the node looks entirely healthy
+            // and is invisible to its own mesh.
+            //
+            // Measured three times on one tag before the cause was found, and
+            // the only reason it took that long is this branch saying nothing.
+            // The trigger was an externally supplied private key that had not
+            // been clamped per RFC 7748.
+            LOG_ERROR("Failed to regenerate public key from the stored private key. This node will "
+                      "advertise a public key it cannot sign for, and every peer will drop its "
+                      "broadcasts. The stored private key is likely malformed.");
         }
     } else {
         // Generate a new key pair
