@@ -433,7 +433,13 @@ void InputBroker::Init()
         userConfigNoScreen.longPress = INPUT_BROKER_NONE;
         userConfigNoScreen.longPressTime = 500;
         userConfigNoScreen.longLongPress = INPUT_BROKER_SHUTDOWN;
-        userConfigNoScreen.doublePress = INPUT_BROKER_SEND_PING;
+        // TrailMesh7: was INPUT_BROKER_SEND_PING, an ad-hoc position broadcast.
+        // Dropped rather than re-homed to another gesture: the app broadcasts
+        // position on its own schedule (see position_broadcast_policy.dart), so
+        // the ping's marginal value was low, and a button on a screenless tag
+        // that a user cannot see the effect of is worth more given to something
+        // they would reach for in an emergency.
+        userConfigNoScreen.doublePress = INPUT_BROKER_TM7_SOS;
         userConfigNoScreen.triplePress = INPUT_BROKER_GPS_TOGGLE;
         UserButtonThread->initButton(userConfigNoScreen);
     }

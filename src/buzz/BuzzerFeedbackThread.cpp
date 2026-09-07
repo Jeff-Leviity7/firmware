@@ -51,6 +51,12 @@ int BuzzerFeedbackThread::handleInputEvent(const InputEvent *event)
         break;
 
     case INPUT_BROKER_SEND_PING:
+    // TrailMesh7: the SOS gesture gets the same tone. Deliberately the same and
+    // not a louder one — the tag confirms the *press was seen*, nothing more.
+    // The alert has not been sent at this point and can still be cancelled from
+    // the phone, so a sound that announced an emergency would be lying for the
+    // five seconds that matter most.
+    case INPUT_BROKER_TM7_SOS:
         playComboTune(); // Ping sent feedback
         break;
 

@@ -112,6 +112,31 @@ int SystemCommandsModule::handleInputEvent(const InputEvent *event)
         service->sendToPhone(p);
         return true;
     }
+
+    // TrailMesh7: double press asks the phone to raise an SOS.
+    //
+    // The alert itself is composed and sent by the app, not here, and that is
+    // deliberate. The app owns the alert format, the room keys it must be
+    // encrypted under, the recipients, the position to attach and — the part
+    // that matters most — the cancel path. None of that is knowable from the
+    // firmware, and a radio has no unsend.
+    //
+    // Local only, exactly as the single press: `sendToPhone` enqueues straight
+    // to the BLE client, so this costs no airtime and needs no GPS fix. If no
+    // phone is connected, nothing happens; a tag alone cannot raise an alarm,
+    // which is honest rather than a limitation to work around.
+    case INPUT_BROKER_TM7_SOS: {
+        meshtastic_MeshPacket *p = router->allocForSending();
+        p->to = nodeDB->getNodeNum(); // addressed at ourselves; never transmitted
+        p->decoded.portnum = meshtastic_PortNum_PRIVATE_APP;
+        p->decoded.payload.size = 3;
+        p->decoded.payload.bytes[0] = 0x00; // app extended-frame prefix
+        p->decoded.payload.bytes[1] = 0x02; // extended type: tag trigger
+        p->decoded.payload.bytes[2] = 0x02; // gesture: double press
+        LOG_INFO("TrailMesh7: queueing SOS tag-trigger for the phone");
+        service->sendToPhone(p);
+        return true;
+    }
         // GPS
     case INPUT_BROKER_GPS_TOGGLE:
 #if !MESHTASTIC_EXCLUDE_GPS

@@ -29,6 +29,10 @@ enum input_broker_event {
     INPUT_BROKER_SHUTDOWN = 0x9b,
     INPUT_BROKER_GPS_TOGGLE = 0x9e,
     INPUT_BROKER_SEND_PING = 0xaf,
+    // TrailMesh7: double press asks the paired phone to raise an SOS. Value
+    // picked in the same free high range as the events above it, clear of
+    // every keycode and of upstream's own additions.
+    INPUT_BROKER_TM7_SOS = 0xb0,
     INPUT_BROKER_FN_F1 = 0xf1,
     INPUT_BROKER_FN_F2 = 0xf2,
     INPUT_BROKER_FN_F3 = 0xf3,
