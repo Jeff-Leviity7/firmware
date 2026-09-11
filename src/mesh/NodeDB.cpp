@@ -3431,6 +3431,21 @@ void NodeDB::updateTelemetry(uint32_t nodeId, const meshtastic_Telemetry &t, RxS
         return;
 
     if (t.which_variant == meshtastic_Telemetry_device_metrics_tag) {
+        // A device_metrics packet with every field absent is not a reading, it is a
+        // *request* - the payload clients send with want_response to ask a node for its
+        // battery (see DeviceTelemetryModule::allocReply). handleReceivedProtobuf runs
+        // before the reply machinery and cannot tell the two apart, so storing this
+        // unconditionally let a request overwrite the requester's real battery level
+        // with nothing. The record then survives forever: nothing clears a satellite
+        // entry, and PhoneAPI::makeReplayTelemetryPacket re-sends it to every phone
+        // that connects, so one poll turns into a node whose battery reads "absent" on
+        // every client indefinitely. Absent is not empty - refuse rather than record.
+        const meshtastic_DeviceMetrics &dm = t.variant.device_metrics;
+        if (!dm.has_battery_level && !dm.has_voltage && !dm.has_channel_utilization && !dm.has_air_util_tx &&
+            !dm.has_uptime_seconds) {
+            LOG_DEBUG("updateTelemetry ignoring empty device metrics from node=0x%08x (telemetry request)", nodeId);
+            return;
+        }
         if (src == RX_SRC_LOCAL) {
             LOG_DEBUG("updateTelemetry LOCAL device");
         } else {

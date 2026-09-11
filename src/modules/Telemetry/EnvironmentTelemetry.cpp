@@ -657,7 +657,15 @@ bool EnvironmentTelemetryModule::handleReceivedProtobuf(const meshtastic_MeshPac
 #endif
         // Cache the latest env metrics per node on NodeDB so the phone can
         // pull last-known values across reboots and replays.
-        nodeDB->updateTelemetry(getFrom(&mp), *t, RX_SRC_RADIO);
+        //
+        // Not when the packet is a request. handleReceivedProtobuf runs before the
+        // want_response reply machinery, so the empty payload a client sends to *ask*
+        // for readings arrives here looking like a set of readings that are all zero.
+        // Recording it replaces the sender's real measurements with nothing, and
+        // nothing ever clears a satellite entry - see the matching guard in
+        // NodeDB::updateTelemetry for what that costs.
+        if (!mp.decoded.want_response)
+            nodeDB->updateTelemetry(getFrom(&mp), *t, RX_SRC_RADIO);
 
         const NodeNum senderNode = getFrom(&mp);
         if (shouldDisplayRemoteNode(senderNode)) {
