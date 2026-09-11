@@ -228,7 +228,26 @@ SO GPIO 39/TXEN MAY NOT BE DEFINED FOR SUCCESSFUL OPERATION OF THE SX1262 - TG
 #define AREF_VOLTAGE 3.0
 #define VBAT_AR_INTERNAL AR_INTERNAL_3_0
 #define ADC_MULTIPLIER 1.73
-#define OCV_ARRAY 4160, 4020, 3940, 3870, 3810, 3760, 3740, 3720, 3680, 3620, 2990 // updated OCV array for rak_wismeshtag
+// Open-circuit voltage curve, highest (100%) first. The top point was 4160, which is
+// *below* where this cell actually rests when full - measured 2026-09-10 across two tags
+// off USB: 4.13-4.20 V, and 4.15-4.16 V. Everything above 4160 clipped to 100%, so the
+// top 40 mV of range was invisible, and OCV[0] also sets the external-power threshold
+// (see CHARGING_VOLT_MARGIN_MV in Power.cpp), which put that threshold at 4170 mV -
+// inside the resting range of a full battery. 4200 is the charge-termination voltage
+// these cells are actually taken to.
+#define OCV_ARRAY 4200, 4020, 3940, 3870, 3810, 3760, 3740, 3720, 3680, 3620, 2990 // measured for rak_wismeshtag
+
+// External power is inferred from voltage alone on this board - there is no EXT_PWR_DETECT
+// pin, no CC controller and no INA, so isVbusIn() falls through to `getBattVoltage() >
+// chargingVolt`. The stock 10 mV margin put the threshold at 4210 mV against readings that
+// swing 20 mV sample to sample, so a full battery reported MAGIC_USB_BATTERY_LEVEL (101,
+// "USB powered") with nothing plugged in. 80 mV clears every resting sample measured.
+//
+// The trade this makes deliberately: a tag on the charger may now report its real
+// percentage instead of "USB powered". That is a label missing while the user is holding
+// the cable. The other way round is a wrong battery reading on an unattended tracker in a
+// field, which is the one thing the tracker exists to tell you.
+#define CHARGING_VOLT_MARGIN_MV 80
 
 // Wake from System OFF when battery rises again (LPCOMP).
 // BAT_ADC divider: R22=1M (top), R24=1.5M (bottom) => V_BAT_ADC = VBAT * (1.5 / (1.0 + 1.5)) = 0.6 * VBAT

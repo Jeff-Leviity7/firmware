@@ -349,6 +349,25 @@ static void battery_adcDisable()
  * A simple battery level sensor that assumes the battery voltage is attached
  * via a voltage-divider to an analog input
  */
+// How far above the OCV curve's full-charge point a reading must sit before this
+// board infers external power. Boards with a VBUS or charge-status pin never reach
+// that inference; boards without one guess from voltage alone, and the guess is only
+// as good as this margin.
+//
+// **Ten millivolts is inside the ADC's noise, and that is not a theoretical concern.**
+// Measured on rak_wismeshtag 2026-09-10 with USB physically removed: seven consecutive
+// samples read 4.13, 4.14, 4.17, 4.18, 4.19, 4.20, 4.20 V. battery_level and voltage
+// are two separate ADC samples taken milliseconds apart, so they straddle any threshold
+// inside that spread - the same cell reported 100 and 101 alternately. A second tag
+// (!46ab6fab) reported 101 at 4.15 and 4.16 V. A full battery read as mains power, which
+// is exactly the reading a tracker exists to give and the one nobody can sanity-check
+// from across a field.
+//
+// Boards that do not override this keep the historical 10 mV behaviour exactly.
+#ifndef CHARGING_VOLT_MARGIN_MV
+#define CHARGING_VOLT_MARGIN_MV 10
+#endif
+
 class AnalogBatteryLevel : public HasBatteryLevel
 {
   public:
@@ -627,7 +646,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
     /// For heltecs with no battery connected, the measured voltage is 2204, so
     // need to be higher than that, in this case is 2500mV (3000-500)
     const uint16_t OCV[NUM_OCV_POINTS] = {OCV_ARRAY};
-    const float chargingVolt = (OCV[0] + 10) * NUM_CELLS;
+    const float chargingVolt = (OCV[0] + CHARGING_VOLT_MARGIN_MV) * NUM_CELLS;
     const float noBatVolt = (OCV[NUM_OCV_POINTS - 1] - 500) * NUM_CELLS;
     // Start value from minimum voltage for the filter to not start from 0
     // that could trigger some events.
