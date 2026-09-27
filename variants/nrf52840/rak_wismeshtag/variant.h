@@ -215,6 +215,21 @@ SO GPIO 39/TXEN MAY NOT BE DEFINED FOR SUCCESSFUL OPERATION OF THE SX1262 - TG
 #define GPS_RX_PIN PIN_SERIAL1_RX
 #define GPS_TX_PIN PIN_SERIAL1_TX
 
+// TrailMesh7: the tag's own GPS starts off, and the phone turns it on.
+//
+// Without this, installDefaultConfig() falls through its GPS_RX_PIN branch to
+// gps_mode = ENABLED, so every tag that boots on default config — which is
+// what a fresh install of this firmware produces — comes up hunting for
+// satellites. On a tag converted from stock that is a surprise the owner never
+// asked for: TrailMesh7 takes position from the phone unless the tag is set up
+// as a tracker, and TrackerProvisioningService turns the GPS on explicitly
+// when it is. Measured on a tag converted over Web Serial, 2026-09-27, which
+// came back with GPS enabled and its region gone.
+//
+// Only affects tags installing defaults. A tag whose saved config survives the
+// update keeps whatever it had.
+#define USERPREFS_CONFIG_GPS_MODE meshtastic_Config_PositionConfig_GpsMode_DISABLED
+
 // RAK WISMESHTAG
 #define PIN_BUZZER 21
 
